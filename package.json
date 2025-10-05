@@ -1,5 +1,5 @@
 {
-  "name": "nexorasim-management",
+  "name": "@nexorasim/management",
   "version": "1.0.0",
   "description": "NexoraSIM™ eSIM Profile Management Portal",
   "main": "dist/main.js",
@@ -69,6 +69,15 @@
     "snyk": "^1.1200.0",
     "concurrently": "^8.2.0"
   },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nexorasim/management.git"
+  },
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/",
+    "access": "public"
+  },
+  "keywords": ["esim", "telecom", "myanmar", "gsma", "rsp", "iot", "management"],
   "jest": {
     "moduleFileExtensions": ["js", "json", "ts"],
     "rootDir": "src",
