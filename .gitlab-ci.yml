@@ -1,0 +1,108 @@
+stages:
+  - build
+  - test
+  - security
+  - deploy
+
+variables:
+  DOCKER_REGISTRY: $CI_REGISTRY
+  BACKEND_IMAGE: $CI_REGISTRY_IMAGE/backend:$CI_COMMIT_SHA
+  FRONTEND_IMAGE: $CI_REGISTRY_IMAGE/frontend:$CI_COMMIT_SHA
+
+# Build Stage
+build-backend:
+  stage: build
+  image: docker:20.10.16
+  services:
+    - docker:20.10.16-dind
+  script:
+    - docker build -t $BACKEND_IMAGE .
+    - docker push $BACKEND_IMAGE
+  only:
+    - main
+    - develop
+
+build-frontend:
+  stage: build
+  image: docker:20.10.16
+  services:
+    - docker:20.10.16-dind
+  script:
+    - cd frontend
+    - docker build -t $FRONTEND_IMAGE .
+    - docker push $FRONTEND_IMAGE
+  only:
+    - main
+    - develop
+
+# Test Stage
+test-backend:
+  stage: test
+  image: node:18-alpine
+  script:
+    - npm ci
+    - npm run test
+    - npm run test:e2e
+  coverage: '/All files[^|]*\|[^|]*\s+([\d\.]+)/'
+  artifacts:
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage/cobertura-coverage.xml
+
+test-frontend:
+  stage: test
+  image: node:18-alpine
+  script:
+    - cd frontend
+    - npm ci
+    - npm run test -- --coverage --watchAll=false
+  artifacts:
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: frontend/coverage/cobertura-coverage.xml
+
+# Security Stage
+security-scan:
+  stage: security
+  image: securecodewarrior/docker-snyk:latest
+  script:
+    - snyk test --severity-threshold=high
+    - snyk monitor
+  allow_failure: true
+
+sast:
+  stage: security
+  include:
+    - template: Security/SAST.gitlab-ci.yml
+
+# Deploy to EKS
+deploy-staging:
+  stage: deploy
+  image: bitnami/kubectl:latest
+  script:
+    - kubectl config use-context $KUBE_CONTEXT_STAGING
+    - envsubst < k8s/deployment.yaml | kubectl apply -f -
+    - kubectl rollout status deployment/nexorasim-backend -n staging
+    - kubectl rollout status deployment/nexorasim-frontend -n staging
+  environment:
+    name: staging
+    url: https://staging.nexorasim.com
+  only:
+    - develop
+
+deploy-production:
+  stage: deploy
+  image: bitnami/kubectl:latest
+  script:
+    - kubectl config use-context $KUBE_CONTEXT_PROD
+    - envsubst < k8s/deployment.yaml | kubectl apply -f -
+    - kubectl rollout status deployment/nexorasim-backend -n production
+    - kubectl rollout status deployment/nexorasim-frontend -n production
+  environment:
+    name: production
+    url: https://nexorasim.com
+  when: manual
+  only:
+    - main
