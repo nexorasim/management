@@ -9,17 +9,17 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey: process.env.JWT_SECRET || 'nexora-secret',
+      secretOrKey: process.env.JWT_SECRET || 'your-secret-key',
     });
   }
 
   async validate(payload: any) {
     const user = await this.authService.findById(payload.sub);
-    return { 
-      id: user.id, 
-      email: user.email, 
+    return {
+      id: user.id,
+      email: user.email,
+      name: user.name,
       role: user.role,
-      carrier: user.carrier 
     };
   }
 }

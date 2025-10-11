@@ -2,40 +2,51 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
-import helmet from 'helmet';
-import compression from 'compression';
+import * as helmet from 'helmet';
+import * as compression from 'compression';
+import * as cors from 'cors';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-  
-  // Security
+
+  // Security middleware
   app.use(helmet());
   app.use(compression());
-  app.enableCors({
-    origin: process.env.FRONTEND_URL || 'http://localhost:3001',
+  app.use(cors({
+    origin: process.env.FRONTEND_URL || 'https://enterprise.myesimplus.com',
     credentials: true,
-  });
+  }));
 
-  // Validation
+  // Global validation pipe
   app.useGlobalPipes(new ValidationPipe({
     whitelist: true,
     forbidNonWhitelisted: true,
     transform: true,
   }));
 
-  // Swagger API Documentation
+  // API prefix
+  app.setGlobalPrefix('api/v1');
+
+  // Swagger documentation
   const config = new DocumentBuilder()
-    .setTitle('NexoraSIM™ API')
-    .setDescription('eSIM Profile Management Portal API')
+    .setTitle('My eSIM Plus Management Portal')
+    .setDescription('Production-ready eSIM Management API with Apple MDM integration')
     .setVersion('1.0')
     .addBearerAuth()
+    .addTag('profiles', 'eSIM Profile Management')
+    .addTag('apple', 'Apple MDM & ABM Integration')
+    .addTag('carriers', 'Carrier Management')
+    .addTag('auth', 'Authentication & Authorization')
     .build();
-  const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('docs', app, document);
 
-  await app.listen(3000);
-  console.log('🚀 NexoraSIM™ API running on http://localhost:3000');
-  console.log('📚 API Docs: http://localhost:3000/docs');
+  const document = SwaggerModule.createDocument(app, config);
+  SwaggerModule.setup('api/docs', app, document);
+
+  const port = process.env.PORT || 3000;
+  await app.listen(port);
+  
+  console.log(`🚀 My eSIM Plus Portal running on port ${port}`);
+  console.log(`📚 API Documentation: http://localhost:${port}/api/docs`);
 }
 
 bootstrap();

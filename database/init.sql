@@ -1,85 +1,163 @@
--- NexoraSIM™ Database Initialization
--- FIPS 140-3 Level 3 compliant database schema
+-- My eSIM Plus Database Initialization
+-- Production-ready schema with indexes and constraints
 
 -- Enable UUID extension
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
--- Create enum types
-CREATE TYPE user_role AS ENUM ('admin', 'operator', 'auditor');
-CREATE TYPE profile_status AS ENUM ('inactive', 'active', 'suspended', 'migrating');
-CREATE TYPE carrier_type AS ENUM ('mpt-mm', 'atom-mm', 'ooredoo-mm', 'mytel-mm');
-
--- Users table with RBAC
-CREATE TABLE users (
+-- Users table
+CREATE TABLE IF NOT EXISTS users (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     email VARCHAR(255) UNIQUE NOT NULL,
     password VARCHAR(255) NOT NULL,
     name VARCHAR(255) NOT NULL,
-    role user_role NOT NULL,
-    carrier VARCHAR(50),
+    role VARCHAR(50) DEFAULT 'operator',
     is_active BOOLEAN DEFAULT true,
+    last_login_at TIMESTAMP,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- eSIM Profiles table
-CREATE TABLE esim_profiles (
+-- Apple devices table
+CREATE TABLE IF NOT EXISTS apple_devices (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    iccid VARCHAR(20) UNIQUE NOT NULL,
-    eid VARCHAR(32) NOT NULL,
-    status profile_status DEFAULT 'inactive',
-    carrier carrier_type NOT NULL,
-    msisdn VARCHAR(15) NOT NULL,
-    imsi VARCHAR(15),
-    is_active BOOLEAN DEFAULT true,
+    udid VARCHAR(255) UNIQUE NOT NULL,
+    serial_number VARCHAR(255),
+    imei VARCHAR(255),
+    eid VARCHAR(255),
+    device_name VARCHAR(255) NOT NULL,
+    model VARCHAR(255) NOT NULL,
+    os_version VARCHAR(50) NOT NULL,
+    is_supervised BOOLEAN DEFAULT false,
+    is_user_approved_mdm BOOLEAN DEFAULT false,
+    enrollment_status VARCHAR(50) DEFAULT 'enrolled',
+    push_magic VARCHAR(255),
+    push_token TEXT,
+    unlock_token TEXT,
+    bootstrap_token TEXT,
+    device_information JSONB,
+    security_info JSONB,
+    restrictions JSONB,
+    last_seen TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- MDM commands table
+CREATE TABLE IF NOT EXISTS mdm_commands (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    command_uuid VARCHAR(255) UNIQUE NOT NULL,
+    request_type VARCHAR(100) NOT NULL,
+    command JSONB NOT NULL,
+    status VARCHAR(50) DEFAULT 'pending',
+    response JSONB,
+    error_chain TEXT,
+    retry_count INTEGER DEFAULT 0,
+    scheduled_at TIMESTAMP,
+    sent_at TIMESTAMP,
+    completed_at TIMESTAMP,
+    device_id UUID NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    last_activated_at TIMESTAMP
+    FOREIGN KEY (device_id) REFERENCES apple_devices(id) ON DELETE CASCADE
 );
 
--- Audit logs table for compliance
-CREATE TABLE audit_logs (
+-- ABM tokens table
+CREATE TABLE IF NOT EXISTS abm_tokens (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    org_id VARCHAR(255) UNIQUE NOT NULL,
+    org_name VARCHAR(255) NOT NULL,
+    server_token TEXT NOT NULL,
+    consumer_key TEXT NOT NULL,
+    consumer_secret TEXT NOT NULL,
+    access_token TEXT NOT NULL,
+    access_secret TEXT NOT NULL,
+    expires_at TIMESTAMP NOT NULL,
+    is_active BOOLEAN DEFAULT true,
+    last_sync_at TIMESTAMP,
+    capabilities JSONB,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- eSIM profiles table
+CREATE TABLE IF NOT EXISTS esim_profiles (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    iccid VARCHAR(255) UNIQUE NOT NULL,
+    eid VARCHAR(255),
+    smdp_address VARCHAR(255) NOT NULL,
+    activation_code TEXT NOT NULL,
+    confirmation_code VARCHAR(255) NOT NULL,
+    carrier VARCHAR(100) NOT NULL,
+    plan VARCHAR(255) NOT NULL,
+    status VARCHAR(50) DEFAULT 'pending',
+    installation_date TIMESTAMP,
+    activation_date TIMESTAMP,
+    suspension_date TIMESTAMP,
+    deletion_date TIMESTAMP,
+    profile_data JSONB,
+    installation_response JSONB,
+    is_transfer_eligible BOOLEAN DEFAULT false,
+    transfer_request_id VARCHAR(255),
+    device_id UUID,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (device_id) REFERENCES apple_devices(id) ON DELETE SET NULL
+);
+
+-- Audit logs table
+CREATE TABLE IF NOT EXISTS audit_logs (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID,
     action VARCHAR(100) NOT NULL,
-    entity_id VARCHAR(255) NOT NULL,
-    user_id UUID NOT NULL REFERENCES users(id),
-    metadata JSONB,
+    resource_type VARCHAR(100) NOT NULL,
+    resource_id VARCHAR(255),
+    details JSONB,
     ip_address INET,
     user_agent TEXT,
-    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
 );
 
--- Indexes for performance
-CREATE INDEX idx_profiles_carrier ON esim_profiles(carrier);
-CREATE INDEX idx_profiles_status ON esim_profiles(status);
-CREATE INDEX idx_profiles_iccid ON esim_profiles(iccid);
-CREATE INDEX idx_audit_user_id ON audit_logs(user_id);
-CREATE INDEX idx_audit_timestamp ON audit_logs(timestamp);
-CREATE INDEX idx_audit_action ON audit_logs(action);
+-- Profiles table (legacy compatibility)
+CREATE TABLE IF NOT EXISTS profiles (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    iccid VARCHAR(255) UNIQUE NOT NULL,
+    carrier VARCHAR(100) NOT NULL,
+    plan VARCHAR(255) NOT NULL,
+    status VARCHAR(50) NOT NULL,
+    device_id VARCHAR(255),
+    metadata JSONB,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
 
--- Insert default admin user (password: admin123)
-INSERT INTO users (email, password, name, role) VALUES 
-('admin@nexorasim.com', '$2b$10$rQZ8kHWKQVz8kHWKQVz8kOQVz8kHWKQVz8kHWKQVz8kHWKQVz8kH', 'System Administrator', 'admin');
+-- Create indexes for performance
+CREATE INDEX IF NOT EXISTS idx_apple_devices_udid ON apple_devices(udid);
+CREATE INDEX IF NOT EXISTS idx_apple_devices_serial ON apple_devices(serial_number);
+CREATE INDEX IF NOT EXISTS idx_apple_devices_status ON apple_devices(enrollment_status);
+CREATE INDEX IF NOT EXISTS idx_apple_devices_last_seen ON apple_devices(last_seen);
 
--- Insert sample eSIM profiles for testing
-INSERT INTO esim_profiles (iccid, eid, carrier, msisdn, status) VALUES
-('89860000000000000001', '89033023422222222222222222222222', 'mpt-mm', '959123456789', 'active'),
-('89860000000000000002', '89033023422222222222222222222223', 'atom-mm', '959987654321', 'inactive'),
-('89860000000000000003', '89033023422222222222222222222224', 'ooredoo-mm', '959555666777', 'active'),
-('89860000000000000004', '89033023422222222222222222222225', 'mytel-mm', '959111222333', 'inactive');
+CREATE INDEX IF NOT EXISTS idx_mdm_commands_device ON mdm_commands(device_id);
+CREATE INDEX IF NOT EXISTS idx_mdm_commands_status ON mdm_commands(status);
+CREATE INDEX IF NOT EXISTS idx_mdm_commands_uuid ON mdm_commands(command_uuid);
 
--- Create function to update updated_at timestamp
-CREATE OR REPLACE FUNCTION update_updated_at_column()
-RETURNS TRIGGER AS $$
-BEGIN
-    NEW.updated_at = CURRENT_TIMESTAMP;
-    RETURN NEW;
-END;
-$$ language 'plpgsql';
+CREATE INDEX IF NOT EXISTS idx_esim_profiles_iccid ON esim_profiles(iccid);
+CREATE INDEX IF NOT EXISTS idx_esim_profiles_device ON esim_profiles(device_id);
+CREATE INDEX IF NOT EXISTS idx_esim_profiles_status ON esim_profiles(status);
+CREATE INDEX IF NOT EXISTS idx_esim_profiles_carrier ON esim_profiles(carrier);
 
--- Create triggers for updated_at
-CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE INDEX IF NOT EXISTS idx_audit_logs_user ON audit_logs(user_id);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_action ON audit_logs(action);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_created ON audit_logs(created_at);
 
-CREATE TRIGGER update_profiles_updated_at BEFORE UPDATE ON esim_profiles
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+-- Insert default admin user
+INSERT INTO users (email, password, name, role) 
+VALUES ('admin@myesimplus.com', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Administrator', 'admin')
+ON CONFLICT (email) DO NOTHING;
+
+-- Insert sample data for development
+INSERT INTO users (email, password, name, role) 
+VALUES 
+    ('operator@myesimplus.com', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Operator User', 'operator'),
+    ('auditor@myesimplus.com', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Auditor User', 'auditor')
+ON CONFLICT (email) DO NOTHING;

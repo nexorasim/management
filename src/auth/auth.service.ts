@@ -2,8 +2,8 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import * as bcrypt from 'bcrypt';
 import { User } from './user.entity';
+import * as bcrypt from 'bcryptjs';
 
 @Injectable()
 export class AuthService {
@@ -13,40 +13,38 @@ export class AuthService {
     private jwtService: JwtService,
   ) {}
 
-  async validateUser(email: string, password: string): Promise<User | null> {
-    const user = await this.userRepository.findOne({ where: { email, isActive: true } });
+  async validateUser(email: string, password: string): Promise<any> {
+    const user = await this.userRepository.findOne({ where: { email } });
     if (user && await bcrypt.compare(password, user.password)) {
-      return user;
+      const { password, ...result } = user;
+      return result;
     }
     return null;
   }
 
-  async login(email: string, password: string) {
-    const user = await this.validateUser(email, password);
-    if (!user) {
-      throw new UnauthorizedException('Invalid credentials');
-    }
-
-    const payload = { 
-      sub: user.id, 
-      email: user.email, 
-      role: user.role,
-      carrier: user.carrier 
-    };
-
+  async login(user: any) {
+    const payload = { email: user.email, sub: user.id, role: user.role };
     return {
-      access_token: this.jwtService.sign(payload),
+      token: this.jwtService.sign(payload),
       user: {
         id: user.id,
         email: user.email,
         name: user.name,
         role: user.role,
-        carrier: user.carrier,
       },
     };
   }
 
+  async register(userData: any) {
+    const hashedPassword = await bcrypt.hash(userData.password, 10);
+    const user = this.userRepository.create({
+      ...userData,
+      password: hashedPassword,
+    });
+    return this.userRepository.save(user);
+  }
+
   async findById(id: string): Promise<User> {
-    return this.userRepository.findOne({ where: { id, isActive: true } });
+    return this.userRepository.findOne({ where: { id } });
   }
 }

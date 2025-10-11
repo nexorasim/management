@@ -1,145 +1,258 @@
-# NexoraSIM™ eSIM Profile Management Portal
+# My eSIM Plus - Enterprise eSIM Management Portal
 
-Production-ready, standards-compliant eSIM management system for Myanmar telecom operators (MPT, ATOM, OOREDOO, MYTEL).
+Production-ready, standards-compliant eSIM management system with full Apple platform integration for enterprise mobility management.
+
+## 🚀 Quick Start
+
+### One-Command Setup
+
+```bash
+git clone https://github.com/myesimplus/enterprise-portal.git
+cd enterprise-portal
+chmod +x scripts/setup.sh
+./scripts/setup.sh
+```
+
+The setup script will:
+- ✅ Check prerequisites (Node.js 18+, Docker, Docker Compose)
+- ✅ Install all dependencies
+- ✅ Generate development certificates
+- ✅ Set up PostgreSQL database
+- ✅ Build and start all services
+- ✅ Perform health checks
+
+### Manual Setup
+
+```bash
+# Install dependencies
+npm install
+cd frontend && npm install && cd ..
+
+# Setup environment
+cp .env.example .env
+# Edit .env with your configuration
+
+# Start services
+docker-compose up -d
+
+# Run database migrations
+npm run build
+npm run migration:run
+```
 
 ## 🏗️ Architecture Overview
 
 ```mermaid
 graph TB
     subgraph "Frontend Layer"
-        UI[Admin Portal - React/Tailwind]
+        UI[Next.js Portal]
         MOB[Mobile Interface]
     end
     
     subgraph "API Gateway"
-        GW[Kong/AWS API Gateway]
-        AUTH[OAuth2/JWT Auth]
+        GW[Nginx/Load Balancer]
+        AUTH[JWT Authentication]
     end
     
-    subgraph "Microservices"
-        PM[Profile Management]
-        RSP[RSP/PMS Adapter]
-        ENT[Entitlement Service]
-        NOT[Notification Service]
-        AUD[Audit Service]
+    subgraph "Backend Services"
+        API[NestJS API Server]
+        MDM[Apple MDM Service]
+        ABM[Apple Business Manager]
+        ESIM[eSIM Provisioning]
+        AUDIT[Audit & Compliance]
     end
     
     subgraph "Data Layer"
         PG[(PostgreSQL)]
-        MG[(MongoDB)]
+        REDIS[(Redis Cache)]
         S3[(AWS S3)]
-        HSM[AWS CloudHSM]
+        KMS[AWS KMS]
     end
     
-    subgraph "External Systems"
-        MPT[MPT PMS]
-        ATOM[ATOM PMS]
-        OOR[OOREDOO PMS]
-        MYT[MYTEL PMS]
+    subgraph "Apple Ecosystem"
+        APNS[Apple Push Notifications]
+        DEP[Device Enrollment Program]
+        SMDP[SM-DP+ Servers]
     end
     
     UI --> GW
-    MOB --> GW
     GW --> AUTH
-    AUTH --> PM
-    AUTH --> RSP
-    AUTH --> ENT
-    AUTH --> NOT
-    PM --> PG
-    AUD --> MG
-    PM --> S3
-    RSP --> MPT
-    RSP --> ATOM
-    RSP --> OOR
-    RSP --> MYT
-    PM --> HSM
+    AUTH --> API
+    API --> MDM
+    API --> ABM
+    API --> ESIM
+    API --> PG
+    API --> REDIS
+    MDM --> APNS
+    ABM --> DEP
+    ESIM --> SMDP
 ```
 
-## 🚀 Quick Start
+## 🍎 Apple Platform Integration
 
-### Prerequisites
-- Node.js 18+
-- Docker & Docker Compose
-- AWS CLI configured
-- kubectl for Kubernetes
+### Complete MDM Implementation
+- ✅ Device enrollment via Apple Business Manager
+- ✅ APNs push notification service
+- ✅ Full MDM command support (DeviceInformation, InstallProfile, etc.)
+- ✅ Supervised device management
+- ✅ User-Approved MDM handling
 
-### Local Development
-```bash
-git clone https://github.com/nexorasim/management.git
-cd management
-npm install
-docker-compose up -d
-npm run dev
-```
+### eSIM Lifecycle Management
+- ✅ SM-DP+ compliant provisioning
+- ✅ iOS-to-iOS secure transfers
+- ✅ Activation, suspension, deletion workflows
+- ✅ Real-time status monitoring
+- ✅ Carrier-agnostic implementation
 
-### Production Deployment
-```bash
-# Deploy to AWS EKS
-kubectl apply -f k8s/
-helm install nexorasim ./helm-chart
-```
-
-## 📊 Features
-
-- ✅ 200+ eSIM profile management across 4 carriers
-- ✅ RBAC with Admin/Operator/Auditor roles
-- ✅ Full audit trail (GSMA SGP.22/SGP.29 compliant)
-- ✅ Myanmar Unicode + English localization
-- ✅ Multi-tenant carrier isolation
-- ✅ CSV profile migration with validation
-- ✅ Real-time analytics dashboard
+### Enterprise Security
+- ✅ Device compliance policies
+- ✅ Jailbreak detection
+- ✅ Automated remediation
 - ✅ FIPS 140-3 Level 3 HSM integration
-- ✅ SAS-SM v3.4.2 certification ready
+- ✅ End-to-end audit trails
 
-## 🔐 Security & Compliance
+## 📱 Supported Platforms
 
-- **Standards**: GSMA SGP.22, SGP.29, SAS-SM v3.4.2
-- **Encryption**: TLS 1.3, AWS CloudHSM (FIPS 140-3 Level 3)
-- **Certification**: Common Criteria EAL6+
-- **Compliance**: ISO 27001, GDPR, Myanmar Data Protection
+- **iOS 15.0+** - Full MDM and eSIM support
+- **Android 10+** - eSIM provisioning via carrier APIs
+- **Web Portal** - Complete management interface
 
-## 🏢 Multi-Tenant Architecture
+## 🌍 Carrier Support
 
-Each carrier operates in isolated environments:
-- MPT: Tenant ID `mpt-mm`
-- ATOM: Tenant ID `atom-mm`  
-- OOREDOO: Tenant ID `ooredoo-mm`
-- MYTEL: Tenant ID `mytel-mm`
-
-## 📈 Scalability
-
-- **Capacity**: 100,000+ active eSIM profiles
-- **Availability**: 99.99% SLA with multi-region deployment
-- **Performance**: <100ms API response time
-- **Auto-scaling**: Kubernetes HPA based on CPU/memory
+- **MPT Myanmar** - Full integration
+- **ATOM Myanmar** - Full integration  
+- **OOREDOO Myanmar** - Full integration
+- **MYTEL Myanmar** - Full integration
 
 ## 🔧 Technology Stack
 
 ### Backend
-- **Framework**: NestJS (Node.js)
-- **Database**: PostgreSQL (primary), MongoDB (logs)
+- **Framework**: NestJS (Node.js/TypeScript)
+- **Database**: PostgreSQL with TypeORM
 - **Cache**: Redis
-- **Message Queue**: Apache Kafka
-- **API**: GraphQL + REST
+- **API**: REST + GraphQL
+- **Security**: JWT, bcrypt, helmet
 
 ### Frontend
-- **Framework**: React 18 + TypeScript
+- **Framework**: Next.js 14 with TypeScript
 - **Styling**: Tailwind CSS
-- **State**: Redux Toolkit
-- **Charts**: Chart.js
-- **i18n**: react-i18next
+- **State**: React Query + Context API
+- **Charts**: Recharts
+- **UI**: Headless UI + Heroicons
 
 ### Infrastructure
-- **Cloud**: AWS (EKS, RDS, S3, CloudFront)
-- **Monitoring**: Prometheus, Grafana, ELK
-- **CI/CD**: GitLab CI/CD
-- **Security**: AWS IAM, Secrets Manager, CloudHSM
+- **Cloud**: AWS (ECS, RDS, S3, KMS, CloudWatch)
+- **Containers**: Docker + Docker Compose
+- **Proxy**: Nginx with SSL termination
+- **Monitoring**: Prometheus + Grafana
+- **CI/CD**: GitHub Actions
 
-## 📋 API Documentation
+## 🚀 Deployment
 
-- **Swagger UI**: https://api.nexorasim.com/docs
-- **GraphQL Playground**: https://api.nexorasim.com/graphql
+### Development
+```bash
+# Start development environment
+npm run dev
+
+# Frontend development server
+cd frontend && npm run dev
+```
+
+### Production (AWS)
+```bash
+# Deploy infrastructure
+cd terraform
+terraform init
+terraform plan
+terraform apply
+
+# Deploy application
+docker build -t myesimplus-backend .
+docker build -t myesimplus-frontend ./frontend
+
+# Push to ECR and deploy via ECS
+aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin YOUR_ECR_URI
+docker tag myesimplus-backend:latest YOUR_ECR_URI/myesimplus-backend:latest
+docker push YOUR_ECR_URI/myesimplus-backend:latest
+```
+
+### Docker Compose (Production-Ready)
+```bash
+# Production deployment
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+```
+
+## 📊 Features
+
+### Device Management
+- ✅ Real-time device inventory
+- ✅ Bulk device operations
+- ✅ Compliance monitoring
+- ✅ Remote device actions (lock, wipe, etc.)
+- ✅ Device grouping and policies
+
+### eSIM Profile Management
+- ✅ Profile creation and assignment
+- ✅ Bulk profile operations
+- ✅ Transfer workflows with approval
+- ✅ Usage analytics and reporting
+- ✅ Carrier-specific configurations
+
+### User Management
+- ✅ Role-based access control (Admin/Operator/Auditor)
+- ✅ Multi-tenant organization support
+- ✅ SSO integration ready
+- ✅ Activity logging and audit trails
+
+### Analytics & Reporting
+- ✅ Real-time dashboards
+- ✅ Device and profile analytics
+- ✅ Compliance reporting
+- ✅ Usage statistics
+- ✅ Export capabilities (CSV, PDF)
+
+## 🔐 Security Features
+
+- **Authentication**: JWT with refresh tokens
+- **Authorization**: RBAC with granular permissions
+- **Encryption**: TLS 1.3, AES-256, AWS KMS
+- **Compliance**: GSMA SGP.22/SGP.29, ISO 27001
+- **Audit**: Complete activity logging
+- **Monitoring**: Real-time security alerts
+
+## 📚 API Documentation
+
+- **Swagger UI**: http://localhost:3000/api/docs
+- **GraphQL Playground**: http://localhost:3000/graphql
 - **Postman Collection**: `./docs/postman/`
+
+### Key Endpoints
+
+```bash
+# Authentication
+POST /api/v1/auth/login
+POST /api/v1/auth/refresh
+
+# Apple MDM
+POST /api/v1/apple/mdm/enroll
+POST /api/v1/apple/mdm/checkin
+POST /api/v1/apple/mdm/connect/:udid
+
+# Device Management
+GET /api/v1/apple/devices
+POST /api/v1/apple/devices/:id/commands/device-info
+POST /api/v1/apple/devices/:id/commands/restrictions
+
+# eSIM Management
+POST /api/v1/apple/esim/profiles
+POST /api/v1/apple/esim/profiles/:id/install
+POST /api/v1/apple/esim/profiles/:id/transfer
+
+# Apple Business Manager
+POST /api/v1/apple/abm/tokens
+GET /api/v1/apple/abm/tokens/:id/devices
+POST /api/v1/apple/abm/tokens/:id/devices/assign
+```
 
 ## 🧪 Testing
 
@@ -147,8 +260,11 @@ Each carrier operates in isolated environments:
 # Unit tests
 npm run test
 
-# Integration tests  
+# Integration tests
 npm run test:e2e
+
+# Test coverage
+npm run test:cov
 
 # Load testing
 npm run test:load
@@ -157,36 +273,120 @@ npm run test:load
 npm run test:security
 ```
 
-## 📊 Monitoring & Analytics
+## 📈 Monitoring
 
-- **Dashboards**: Grafana (http://monitoring.nexorasim.com)
-- **Logs**: ELK Stack (http://logs.nexorasim.com)
-- **Alerts**: PagerDuty integration
-- **Metrics**: Prometheus + OpenTelemetry
+### Health Checks
+- **Backend**: http://localhost:3000/api/v1/health
+- **Database**: Connection and query performance
+- **Redis**: Cache connectivity and performance
+- **APNs**: Certificate validity and connectivity
 
-## 🌍 Localization
+### Metrics
+- **Prometheus**: http://localhost:9090
+- **Grafana**: http://localhost:3002 (admin/admin)
+- **Custom Dashboards**: Device enrollment, eSIM provisioning, API performance
 
-Supported languages:
-- **English** (en-US)
-- **Myanmar Unicode** (my-MM)
+### Alerting
+- APNs certificate expiration (30 days)
+- Failed eSIM installations (>5% failure rate)
+- Device compliance violations
+- API error rates (>1%)
 
-Translation files: `./frontend/src/locales/`
+## 🔧 Configuration
 
-## 🔄 CI/CD Pipeline
+### Environment Variables
+```bash
+# Core Configuration
+NODE_ENV=production
+PORT=3000
+DB_HOST=localhost
+DB_PORT=5432
+JWT_SECRET=your-super-secret-key
 
-GitLab CI/CD stages:
-1. **Build** - Docker image creation
-2. **Test** - Unit/integration/security tests
-3. **Deploy** - Blue-green deployment to EKS
-4. **Monitor** - Health checks and rollback
+# Apple Configuration
+APNS_CERT_PATH=/app/certs/apns-cert.pem
+APNS_KEY_PATH=/app/certs/apns-key.pem
+ABM_BASE_URL=https://mdmenrollment.apple.com
+
+# AWS Configuration
+AWS_REGION=us-east-1
+AWS_KMS_KEY_ID=your-kms-key-id
+
+# Carrier APIs
+MPT_API_URL=https://api.mpt.com.mm
+ATOM_API_URL=https://api.atom.com.mm
+```
+
+### Apple Certificates Setup
+1. Generate APNs certificate from Apple Developer Portal
+2. Convert to PEM format: `openssl pkcs12 -in cert.p12 -out apns-cert.pem -nodes`
+3. Place certificates in `/app/certs/` directory
+4. Configure paths in environment variables
+
+### Apple Business Manager Integration
+1. Create MDM server in Apple Business Manager
+2. Download server token
+3. Register token via API: `POST /api/v1/apple/abm/tokens`
+4. Assign devices to enrollment profiles
+
+## 🚨 Troubleshooting
+
+### Common Issues
+
+#### APNs Connection Failed
+```bash
+# Check certificate validity
+openssl x509 -in /app/certs/apns-cert.pem -noout -dates
+
+# Test APNs connectivity
+openssl s_client -connect gateway.push.apple.com:2195 -cert apns-cert.pem -key apns-key.pem
+```
+
+#### Device Enrollment Issues
+```bash
+# Check device status
+curl -H "Authorization: Bearer TOKEN" http://localhost:3000/api/v1/apple/devices/DEVICE_ID
+
+# Send test push notification
+curl -X POST -H "Authorization: Bearer TOKEN" \
+  http://localhost:3000/api/v1/apple/apns/test \
+  -d '{"deviceToken":"TOKEN","pushMagic":"MAGIC"}'
+```
+
+#### eSIM Installation Failures
+```bash
+# Check profile status
+curl -H "Authorization: Bearer TOKEN" \
+  http://localhost:3000/api/v1/apple/esim/profiles/PROFILE_ID/status
+
+# Retry installation
+curl -X POST -H "Authorization: Bearer TOKEN" \
+  http://localhost:3000/api/v1/apple/esim/profiles/PROFILE_ID/install \
+  -d '{"deviceId":"DEVICE_ID"}'
+```
 
 ## 📞 Support
 
-- **Documentation**: https://docs.nexorasim.com
-- **Jira**: https://nexorasim.atlassian.net
-- **Email**: support@nexorasim.com
-- **Website**: https://www.nexorasim.com
+- **Documentation**: https://docs.myesimplus.com
+- **API Reference**: https://api.myesimplus.com/docs
+- **GitHub Issues**: https://github.com/myesimplus/enterprise-portal/issues
+- **Email**: support@myesimplus.com
 
 ## 📄 License
 
-Proprietary - NexoraSIM™ 2024. All rights reserved.
+Proprietary - My eSIM Plus 2024. All rights reserved.
+
+## 🤝 Contributing
+
+This is a proprietary enterprise solution. For feature requests or bug reports, please contact our support team.
+
+---
+
+**🎉 Ready to deploy enterprise eSIM management at scale!**
+
+The My eSIM Plus Portal provides everything needed for production deployment:
+- Complete Apple platform integration
+- Enterprise-grade security and compliance
+- Scalable cloud infrastructure
+- Comprehensive monitoring and alerting
+- Professional support and documentation

@@ -1,10 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn } from 'typeorm';
-
-export enum UserRole {
-  ADMIN = 'admin',
-  OPERATOR = 'operator',
-  AUDITOR = 'auditor',
-}
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 
 @Entity('users')
 export class User {
@@ -20,15 +14,18 @@ export class User {
   @Column()
   name: string;
 
-  @Column({ type: 'enum', enum: UserRole })
-  role: UserRole;
-
-  @Column({ nullable: true })
-  carrier?: string;
+  @Column({ default: 'operator' })
+  role: string;
 
   @Column({ default: true })
   isActive: boolean;
 
+  @Column({ nullable: true })
+  lastLoginAt: Date;
+
   @CreateDateColumn()
   createdAt: Date;
+
+  @UpdateDateColumn()
+  updatedAt: Date;
 }
